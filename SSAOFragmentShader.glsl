@@ -3,7 +3,9 @@
 out vec4 gFragOutput;
 
 in vec3 gNormal;
-in vec4 gPosView;
+in float gLinDepth;
+
+
 
 void main ()
 {
@@ -18,6 +20,5 @@ void main ()
 
 	float diff = max(dot(lightDir, normal), 0.0f);
 	vec3 color = 0.3*vec3(1.0f, 1.0f, 0.0f) + 0.7*diff*vec3(0.0f, 1.0f, 0.0f);
-	gFragOutput = vec4(normal, gl_FragCoord.z);
-//	gl_FragDepth = gl_FragCoord.z; //not writing this allows for early-z
+	gFragOutput = vec4(normal, gLinDepth);
 }

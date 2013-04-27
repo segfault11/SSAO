@@ -50,6 +50,13 @@ void GL::Vector3f::ComputeDotProduct
 	res = a.mX*b.mX + a.mY*b.mY + a.mZ*b.mZ; 
 }
 //-----------------------------------------------------------------------------
+void GL::Vector3f::operator*= (float s)
+{
+	mX *= s;
+	mY *= s;
+	mZ *= s;
+}
+//-----------------------------------------------------------------------------
 void GL::Vector3f::Dump () const
 {
 	std::cout << "[" << mX << " " << mY << " " << mZ << "]" << std::endl;

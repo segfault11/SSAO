@@ -6,48 +6,26 @@
 #include "OpenGL.h"
 #include "Camera.h"
 //-----------------------------------------------------------------------------
-struct Vector3f
-{
-	float X, Y, Z;
-
-	Vector3f ()
-	: X(0.0f), Y(0.0f), Z(0.0f)
-	{
-
-	}
-
-	Vector3f (float x, float y, float z)
-	: X(x), Y(y), Z(z)
-	{
-
-	}
-};
-//-----------------------------------------------------------------------------
-struct Camera
-{
-	Vector3f Position;
-	Vector3f FocusPoint;
-	Vector3f Up;
-
-	float FovY, Aspect, Near, Far;
-};
-//-----------------------------------------------------------------------------
 class SSAORenderer 
 {
 public:
     SSAORenderer(const Model& model, unsigned int width, unsigned int height);
     virtual ~SSAORenderer();
 	
-	void SetCamera (const Camera& camera);
 	void SetCamera (const GL::Camera& camera);
 	void Draw () const;
 
 private:
+	// fills textures with geometry information
+	void fillTextures () const;
+
 	GLuint mModelVAO;
+	GLuint mQuadVAO; 	 // Vertex array obj. that stores a quad
 	GLuint mVerticesVBO;
 	GLuint mNormalsVBO;
 	GLuint mIndicesVBO;
-	GLuint mProgram;
+	GLuint mQuadVBO;     // Vertex buffer obj. that stores a quad
+	GLuint mProgram[2];
 	unsigned int mNumVertices;
 	unsigned int mNumIndices;
 	unsigned int mWidth;

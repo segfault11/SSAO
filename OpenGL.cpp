@@ -122,7 +122,7 @@ void GL::AttachShader(GLuint program, const char* filename, GLenum type)
     
 	if (fileContents == NULL) 
     {
-	    printf("File not found.");
+	    printf("File not found.\n");
 		return;
 	}
     
@@ -131,7 +131,7 @@ void GL::AttachShader(GLuint program, const char* filename, GLenum type)
     
 	if (shader == 0) 
     {
-		printf("Could not create shader");
+		printf("Could not create shader\n");
 		free(fileContents);
 		return;
 	}
@@ -145,7 +145,7 @@ void GL::AttachShader(GLuint program, const char* filename, GLenum type)
 	glGetShaderiv(shader, GL_COMPILE_STATUS, &hasCompiled);
     
     if (!hasCompiled) {
-		printf("Could not compile shader");
+		printf("Could not compile shader\n");
 		glDeleteShader(shader);
 		return;
 	}

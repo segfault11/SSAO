@@ -46,21 +46,11 @@ static void rotateCamera (float xrel, float yrel)
 	gsCamera->Rotate(-upAng, -0.0f);
 	gsRenderer->SetCamera(*gsCamera);
 }
+//-----------------------------------------------------------------------------
 static void init () 
 {
 	gsModel = new Model("happybuddha.obj");
 	gsRenderer = new SSAORenderer(*gsModel, WIDTH, HEIGHT);
-
-	Camera camera;
-	camera.Position = Vector3f(0.0f, 0.0f, -1.1f);
-	camera.FocusPoint = Vector3f(0.0f, 0.0f, 0.0f);
-	camera.Up = Vector3f(0.0f, 1.0f, 0.0f);
-	camera.FovY = 60.0f;
-	camera.Aspect = 1280.0f/800.0f;
-	camera.Near = 0.1f;
-	camera.Far = 10.0f;
-	
-	gsRenderer->SetCamera(camera);
 	
 	gsCamera = new GL::Camera
 	(
@@ -167,7 +157,7 @@ int main(int argc, const char *argv[])
 					running = 0;
 					break;
 				case SDL_MOUSEBUTTONDOWN:
-					std::cout << event.motion.x << " " << event.motion.y << std::endl;
+					//std::cout << event.motion.x << " " << event.motion.y << std::endl;
 					break;
 				case SDL_MOUSEMOTION:
 
@@ -192,7 +182,7 @@ int main(int argc, const char *argv[])
 
 		//t.Stop();
 		//gsElapsed = t.GetElapsed();
-		t.DumpElapsed();
+		//t.DumpElapsed();
 	}	
 	
 	SDL_GL_DeleteContext(mainContext);

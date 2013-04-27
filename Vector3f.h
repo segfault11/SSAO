@@ -23,7 +23,7 @@ public:
 	float Y() const {return mY;};
 	float Z() const {return mZ;};
 	
-	
+	void operator*= (float s); 	
 
 	void Dump () const;
 
