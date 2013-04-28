@@ -1,25 +1,28 @@
+//------------------------------------------------------------------------------
 #version 150
-
+//------------------------------------------------------------------------------
 uniform mat4 projMat;
-uniform mat4 viewMat;
 uniform sampler2D gkNormalDepthTex;
-uniform vec3 uSamples[32];
-
-float gRadius = 0.03f; // TODO: make generic
-
+uniform sampler2D uNoiseTex;
+uniform vec3 uSamples[64];
+uniform int uSampleSize;
+uniform float uSampleRadius;
+uniform int uWidth;
+uniform int uHeight;
+uniform int uNoiseSize;
+//------------------------------------------------------------------------------
 in VertexData
 {
 	smooth vec2 texCoord;
 } 
 gVertexData;
-
-
+//------------------------------------------------------------------------------
 out vec4 gFragOutput;
-
+//------------------------------------------------------------------------------
 void main ()
 {
 	vec4 color = texture(gkNormalDepthTex, gVertexData.texCoord);
-
+	vec3 normal = color.xyz;
 	float depth = color.a;
 
 	if (depth == 0.0f)
@@ -39,12 +42,31 @@ void main ()
 	pos.z = -depth;
 
 	//==========================================================================
-	//
+	// compute the occlusion value
 	//==========================================================================
-	float occ = 0.0f;
-	for (int i = 0; i < 32; i++)
+	
+	vec3 rvec = texture
+	(
+		uNoiseTex, 
+		gVertexData.texCoord*vec2
+		(
+			uWidth/uNoiseSize, 
+			uHeight/uNoiseSize
+		)
+	).xyz;
+	if (texture(uNoiseTex, gVertexData.texCoord).x == 0.0f)
 	{
-		vec3 samplePos = pos + gRadius*uSamples[i];
+		discard;
+	}
+
+	vec3 t = normalize(rvec - dot(rvec, normal)*normal);
+	vec3 t2 = cross(normal, t);
+	mat3 cob = mat3(t, t2, normal);
+
+	float occ = 0.0f;
+	for (int i = 0; i < uSampleSize; i++)
+	{
+		vec3 samplePos = pos + uSampleRadius*(cob*uSamples[i]);
 		vec4 sampleOff = projMat*vec4(samplePos, 1.0f);
 		sampleOff.xy /= sampleOff.w;
 		sampleOff.xy = sampleOff.xy*0.5f + 0.5f;
@@ -63,3 +85,4 @@ void main ()
 
 	gFragOutput = vec4(occ, occ, occ, 1.0f);
 }
+//------------------------------------------------------------------------------

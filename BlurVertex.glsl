@@ -1,7 +1,6 @@
 #version 150
 
-uniform mat4 viewMat;
-uniform sampler2D gkNormalDepthTex;
+uniform sampler2D uSSAOMap;
 
 in vec2 gPositions;
 

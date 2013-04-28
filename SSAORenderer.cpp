@@ -112,23 +112,56 @@ void saveTexture3f
 	fclose(file);
 }
 //------------------------------------------------------------------------------
-float lerp (float a, float b, float x)
+inline float lerp (float a, float b, float x)
 {
 	return a + x*(b - a);
 }
 //------------------------------------------------------------------------------
-void createKernel(GL::Vector3f* kernel, unsigned int size)
+inline void createKernel(GL::Vector3f* kernel, unsigned int size)
 {
 	for (unsigned int i = 0; i < size; i++)
 	{
 		kernel[i].X() = gsRandom.GetRandomRanged(-1.0f, 1.0f);
 		kernel[i].Y() = gsRandom.GetRandomRanged(-1.0f, 1.0f);
-		kernel[i].Z() = gsRandom.GetRandomRanged(-1.0f, 1.0f);
+		kernel[i].Z() = gsRandom.GetRandomRanged(0.0f, 1.0f);
 		kernel[i].Normalize();
 		float scale = static_cast<float>(i)/static_cast<float>(size);
-   		scale = lerp(0.1f, 1.0f, scale * scale);
+   		scale = lerp(0.1f, 1.0f, scale*scale);
    		kernel[i] *= scale;
 	}
+}
+//-----------------------------------------------------------------------------
+inline void createNoiseTexture (GLuint& handle, unsigned int size)
+{
+	// creates a size x size rgb floating point texture, and stores random noise
+	// axis in the xy plane. these axis are later used in the ssao fragment 
+	// shader together with the fragments normal to create a random space
+	// for kernel samples, to introduce noise to the ssao map and to avoid
+	// banding effects
+
+	// create noise axis
+	unsigned int numSamples = size*size;
+	GL::Vector3f* samples = new GL::Vector3f[numSamples];
+	
+	for (unsigned int i = 0; i < numSamples; i++)
+	{
+		samples[i].X() = gsRandom.GetRandomRanged(-1.0f, 1.0f);
+		samples[i].Y() = gsRandom.GetRandomRanged(-1.0f, 1.0f);
+		samples[i].Z() = 0.0f; 
+		samples[i].Normalize();
+	}
+	
+	// create and init texture
+	glGenTextures(1, &handle);
+	glBindTexture(GL_TEXTURE_2D, handle);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, size, size, 0, GL_RGB, 
+		GL_FLOAT, reinterpret_cast<float*>(samples));
+
+	delete[] samples;
 }
 //------------------------------------------------------------------------------
 SSAORenderer::SSAORenderer 
@@ -197,7 +230,8 @@ SSAORenderer::SSAORenderer
 	glEnableVertexAttribArray(1);
 
 	//==========================================================================
-	// set up render targets for color, pos, normal buffer
+	// set up render targets for the 1st pass:
+	// color, normal buffer, depth buffer
 	//==========================================================================
 	glGenFramebuffers(1, &mFBO);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mFBO);
@@ -262,10 +296,37 @@ SSAORenderer::SSAORenderer
 	glUseProgram(mProgram[1]);
 	GLint loc = glGetUniformLocation(mProgram[1], "gkNormalDepthTex");
 	glUniform1i(loc, 0);
+
+	// create a 4x4 noise tex and tell our ssao shader that we plan to bind it
+	// to the 2nd texture unit
+	createNoiseTexture(mTex[2], 4);
+	loc = glGetUniformLocation(mProgram[1], "uNoiseTex");
+	glUniform1i(loc, 2);
 	
+	// create the sample kernel and pass it to the shader	
 	createKernel(mSamples, 32);
 	loc = glGetUniformLocation(mProgram[1], "uSamples");
 	glUniform3fv(loc, 32, reinterpret_cast<float*>(mSamples));
+
+	// let the shader know the sample size of the kernel and the radius of the
+	// sample hemisphere
+	loc = glGetUniformLocation(mProgram[1], "uSampleSize");
+	glUniform1i(loc, 32);
+	loc = glGetUniformLocation(mProgram[1], "uSampleRadius");
+	glUniform1f(loc, 0.01f);
+
+	// let the shader know the screen width and height and the size of the 
+	// noise tile
+	loc = glGetUniformLocation(mProgram[1], "uWidth");
+	glUniform1i(loc, 1280);
+	loc = glGetUniformLocation(mProgram[1], "uHeight");
+	glUniform1i(loc, 800);
+	loc = glGetUniformLocation(mProgram[1], "uNoiseSize");
+	glUniform1i(loc, 4);
+	
+	//==========================================================================
+	// 	Set up blurring program for the smooth SSAO Values
+	//==========================================================================
 
 	//==========================================================================
 	// create VAO for the quad
@@ -307,17 +368,16 @@ void SSAORenderer::Draw () const
 	glBindTexture(GL_TEXTURE_2D, mTex[0]);
 	glDrawElements(GL_TRIANGLES, mNumIndices, GL_UNSIGNED_INT, 0);
 	glFlush();
-//	glUseProgram(0);
-//	glBindVertexArray(0);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, mTex[0]);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, mTex[2]);
 	glUseProgram(mProgram[1]);
 	glBindVertexArray(mQuadVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 12);
-
 }
 //-----------------------------------------------------------------------------
 void SSAORenderer::SetCamera (const GL::Camera& camera)
@@ -334,23 +394,9 @@ void SSAORenderer::SetCamera (const GL::Camera& camera)
 	glUniformMatrix4fv(projMatLoc, 1, false, projMat);
 	glUniformMatrix4fv(viewMatLoc, 1, false, viewMat);
 
-
     projMatLoc = glGetUniformLocation(mProgram[1], "projMat");
-    viewMatLoc = glGetUniformLocation(mProgram[1], "viewMat");
 
 	glUseProgram(mProgram[1]);
 	glUniformMatrix4fv(projMatLoc, 1, false, projMat);
-	glUniformMatrix4fv(viewMatLoc, 1, false, viewMat);
-}
-//-----------------------------------------------------------------------------
-void SSAORenderer::fillTextures () const
-{
-	glBindFramebuffer(GL_FRAMEBUFFER, mFBO);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-//	glBindTexture(GL_TEXTURE_2D, mTex[0]);
-	glUseProgram(mProgram[0]);
-	glBindVertexArray(mModelVAO);
-	glDrawElements(GL_TRIANGLES, mNumIndices, GL_UNSIGNED_INT, 0);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 //-----------------------------------------------------------------------------
