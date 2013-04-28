@@ -25,7 +25,7 @@ private:
 	GLuint mNormalsVBO;
 	GLuint mIndicesVBO;
 	GLuint mQuadVBO;     // Vertex buffer obj. that stores a quad
-	GLuint mProgram[2];
+	GLuint mProgram[3];
 	unsigned int mNumVertices;
 	unsigned int mNumIndices;
 	unsigned int mWidth;
@@ -34,6 +34,7 @@ private:
 	GLuint mRBO; 		// for depth test
 	GLuint mTex[3];
 
+	GLuint mSSAOFBO;
 
 	GL::Vector3f mSamples[32];
 };

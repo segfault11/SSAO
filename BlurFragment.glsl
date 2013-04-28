@@ -14,21 +14,19 @@ out vec4 oFragOut;
 //------------------------------------------------------------------------------
 void main ()
 {
-	float result = 0.0;
-	vec4 smoothSSAO = vec4(0.0f, 0.0f, 0.0f, 0.0f);
+	float smoothSSAO = 0.0f;
 
    	for (int i = 0; i < 4; i++)
 	{
     	for (int j = 0; j < 4; j++)
 		{
 			vec2 off = vec2(float(i)*uTexelSize.x, float(j)*uTexelSize.y);
-			smoothSSAO +=texture(uSSAOMap, gVertexData.texCoord + off);
-
+			smoothSSAO +=texture(uSSAOMap, gVertexData.texCoord + off).x;
       	}
    	}
 	
 	smoothSSAO = smoothSSAO/16.0f;
 
-	oFragOut = smoothSSAO;
+	oFragOut = vec4(smoothSSAO, smoothSSAO, smoothSSAO, 1.0f);
 }
 //------------------------------------------------------------------------------

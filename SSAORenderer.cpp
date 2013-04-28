@@ -244,7 +244,7 @@ SSAORenderer::SSAORenderer
 		GL_RENDERBUFFER, mRBO);
 
 	// create textures
-	glGenTextures(3, mTex);
+	glGenTextures(1, &mTex[0]);
 
 	// first texture is for depth and the normals
 	glBindTexture(GL_TEXTURE_2D, mTex[0]);
@@ -298,10 +298,10 @@ SSAORenderer::SSAORenderer
 	glUniform1i(loc, 0);
 
 	// create a 4x4 noise tex and tell our ssao shader that we plan to bind it
-	// to the 2nd texture unit
-	createNoiseTexture(mTex[2], 4);
+	// to the 1st texture unit
+	createNoiseTexture(mTex[1], 4);
 	loc = glGetUniformLocation(mProgram[1], "uNoiseTex");
-	glUniform1i(loc, 2);
+	glUniform1i(loc, 1);
 	
 	// create the sample kernel and pass it to the shader	
 	createKernel(mSamples, 32);
@@ -327,6 +327,70 @@ SSAORenderer::SSAORenderer
 	//==========================================================================
 	// 	Set up blurring program for the smooth SSAO Values
 	//==========================================================================
+	mProgram[2] = glCreateProgram();
+	GL::AttachShader
+	(
+		mProgram[2], 
+		"BlurVertex.glsl", 
+		GL_VERTEX_SHADER
+	);
+	GL::AttachShader
+	(
+		mProgram[2], 
+		"BlurFragment.glsl", 
+		GL_FRAGMENT_SHADER
+	);	
+	GL::BindAttribLocation(mProgram[2], "iPositions", 0);
+	GL::BindFragDataLocation(mProgram[2], "oFragOut", 0);
+	GL::LinkProgram(mProgram[2]);
+
+	// set texture units
+	glUseProgram(mProgram[2]);
+	loc = glGetUniformLocation(mProgram[2], "uSSAOMap");
+	glUniform1i(loc, 0);
+	
+	// tell the shader the size of a texel
+	GLfloat texelSize[2];
+	texelSize[0] = 1.0f/1280.0f; // TODO: make generic
+	texelSize[1] = 1.0f/800.0f; // TODO: make generic
+	loc = glGetUniformLocation(mProgram[2], "uTexelSize");
+	glUniform2f(loc, texelSize[0], texelSize[1]);
+	
+	//==========================================================================
+	// set up render targets for the 2nd pass:
+	//==========================================================================
+	glGenFramebuffers(1, &mSSAOFBO);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, mSSAOFBO);
+
+	// add a RBO to the FBO, because we want depth test
+	glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, 
+		GL_RENDERBUFFER, mRBO);
+
+	// create textures
+	glGenTextures(1, &mTex[2]);
+	glBindTexture(GL_TEXTURE_2D, mTex[2]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, mWidth, mHeight, 0, GL_RED, 
+		GL_FLOAT, NULL);
+	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
+		GL_TEXTURE_2D, mTex[2], 0);
+
+	// tell opengl we want to render into multiple targets
+	GLenum buffers2[] = {GL_COLOR_ATTACHMENT0};
+	glDrawBuffers(1, buffers2);	
+	
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
+		std::cout << "FR N OK" << std::endl;
+	}
+	else
+	{
+		std::cout << "FROK" << std::endl;
+	}
+
+	//unbind framebuffer
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
 	//==========================================================================
 	// create VAO for the quad
@@ -358,7 +422,6 @@ SSAORenderer::~SSAORenderer ()
 //-----------------------------------------------------------------------------
 void SSAORenderer::Draw () const
 {
-//	fillTextures();
 	glBindFramebuffer(GL_FRAMEBUFFER, mFBO);
 	glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -370,12 +433,22 @@ void SSAORenderer::Draw () const
 	glFlush();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	glBindFramebuffer(GL_FRAMEBUFFER, mSSAOFBO);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, mTex[0]);
-	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, mTex[2]);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, mTex[1]);
 	glUseProgram(mProgram[1]);
+	glBindVertexArray(mQuadVAO);
+	glDrawArrays(GL_TRIANGLES, 0, 12);
+	glFlush();
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, mTex[2]);
+	glUseProgram(mProgram[2]);
 	glBindVertexArray(mQuadVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 12);
 }
