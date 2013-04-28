@@ -47,7 +47,6 @@ void saveTexture3f
 		{
 			cur2 = (j*width + i);
 			float depth = (data[stride*cur2 + 3 + offset]);
-		//	std::cout << "max " << depth << std::endl;
 
 			if (depth > max && depth != 1.0f) 
 			{

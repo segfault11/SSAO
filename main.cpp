@@ -92,7 +92,7 @@ int main(int argc, const char *argv[])
 
 	mainWindow = SDL_CreateWindow
 	(
-		"Triangle", 
+		"SSAO", 
 		SDL_WINDOWPOS_CENTERED, 
         SDL_WINDOWPOS_CENTERED, 
 		1280, 

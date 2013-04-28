@@ -11,7 +11,7 @@ out float gLinDepth;
 
 void main ()
 {
-	gNormal = gVertNormals;
+	gNormal = (transpose(inverse(viewMat))*vec4(gVertNormals, 1.0f)).xyz;
 	vec4 posView = viewMat*vec4(gPositions, 1.0f);
 	gLinDepth = -posView.z;
 	gl_Position = projMat*posView;
