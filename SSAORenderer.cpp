@@ -123,7 +123,7 @@ void createKernel(GL::Vector3f* kernel, unsigned int size)
 	{
 		kernel[i].X() = gsRandom.GetRandomRanged(-1.0f, 1.0f);
 		kernel[i].Y() = gsRandom.GetRandomRanged(-1.0f, 1.0f);
-		kernel[i].Z() = gsRandom.GetRandomRanged(0.0f, 1.0f);
+		kernel[i].Z() = gsRandom.GetRandomRanged(-1.0f, 1.0f);
 		kernel[i].Normalize();
 		float scale = static_cast<float>(i)/static_cast<float>(size);
    		scale = lerp(0.1f, 1.0f, scale * scale);
@@ -257,14 +257,16 @@ SSAORenderer::SSAORenderer
 	GL::BindAttribLocation(mProgram[1], "gPositions", 0);
 	GL::BindFragDataLocation(mProgram[1], "gFragOutput", 0);
 	GL::LinkProgram(mProgram[1]);
-	
-	//==========================================================================
+
 	// set texture units
-	//==========================================================================
-	GLint loc = glGetUniformLocation(mProgram[1], "gkNormalDepthTex");
 	glUseProgram(mProgram[1]);
+	GLint loc = glGetUniformLocation(mProgram[1], "gkNormalDepthTex");
 	glUniform1i(loc, 0);
 	
+	createKernel(mSamples, 32);
+	loc = glGetUniformLocation(mProgram[1], "uSamples");
+	glUniform3fv(loc, 32, reinterpret_cast<float*>(mSamples));
+
 	//==========================================================================
 	// create VAO for the quad
 	//==========================================================================

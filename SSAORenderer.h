@@ -33,6 +33,9 @@ private:
 	GLuint mFBO;
 	GLuint mRBO; 		// for depth test
 	GLuint mTex[3];
+
+
+	GL::Vector3f mSamples[32];
 };
 //-----------------------------------------------------------------------------
 #endif /* end of include guard: SSAORENDERER_H */
