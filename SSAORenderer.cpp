@@ -299,6 +299,7 @@ void SSAORenderer::Draw () const
 {
 //	fillTextures();
 	glBindFramebuffer(GL_FRAMEBUFFER, mFBO);
+	glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glUseProgram(mProgram[0]);
 	glBindVertexArray(mModelVAO);
