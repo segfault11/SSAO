@@ -187,7 +187,8 @@ SSAORenderer::SSAORenderer
 	);	
 	GL::BindAttribLocation(mProgram[0], "gPositions", 0);
 	GL::BindAttribLocation(mProgram[0], "gNormals", 1);
-	GL::BindFragDataLocation(mProgram[0], "gFragOutput", 0);
+	GL::BindFragDataLocation(mProgram[0], "oNormalDepth", 0);
+	GL::BindFragDataLocation(mProgram[0], "oScene", 1);
 	GL::LinkProgram(mProgram[0]);
 
 	//==========================================================================
@@ -254,9 +255,21 @@ SSAORenderer::SSAORenderer
 	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, 
 		GL_TEXTURE_2D, mTex[0], 0);
 	
+    // second texture is for the illuminated scene without SSAO
+	glGenTextures(1, &mTex[3]);
+	glBindTexture(GL_TEXTURE_2D, mTex[3]);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, mWidth, mHeight, 0, GL_RGBA, 
+		GL_FLOAT, NULL);
+	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, 
+		GL_TEXTURE_2D, mTex[3], 0);
+
+
+
 	// tell opengl we want to render into multiple targets
-	GLenum buffers[] = {GL_COLOR_ATTACHMENT0};
-	glDrawBuffers(1, buffers);	
+	GLenum buffers[] = {GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1};
+	glDrawBuffers(2, buffers);	
 	
 
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
@@ -302,15 +315,16 @@ SSAORenderer::SSAORenderer
 	loc = glGetUniformLocation(mProgram[1], "uNoiseTex");
 	glUniform1i(loc, 1);
 	
-	// create the sample kernel and pass it to the shader	
-	createKernel(mSamples, 32);
+	// create the sample kernel and pass it to the shader
+	unsigned int numSamples = 48;	
+	createKernel(mSamples, numSamples);
 	loc = glGetUniformLocation(mProgram[1], "uSamples");
-	glUniform3fv(loc, 32, reinterpret_cast<float*>(mSamples));
+	glUniform3fv(loc, numSamples, reinterpret_cast<float*>(mSamples));
 
 	// let the shader know the sample size of the kernel and the radius of the
 	// sample hemisphere
 	loc = glGetUniformLocation(mProgram[1], "uSampleSize");
-	glUniform1i(loc, 32);
+	glUniform1i(loc, numSamples);
 	loc = glGetUniformLocation(mProgram[1], "uSampleRadius");
 	glUniform1f(loc, 0.01f);
 
@@ -324,7 +338,8 @@ SSAORenderer::SSAORenderer
 	glUniform1i(loc, 4);
 	
 	//==========================================================================
-	// 	Set up blurring program for the smooth SSAO Values
+	// 	Set up blurring program for the smooth SSAO Values and compositing
+	//  the final image
 	//==========================================================================
 	mProgram[2] = glCreateProgram();
 	GL::AttachShader
@@ -347,6 +362,8 @@ SSAORenderer::SSAORenderer
 	glUseProgram(mProgram[2]);
 	loc = glGetUniformLocation(mProgram[2], "uSSAOMap");
 	glUniform1i(loc, 0);
+	loc = glGetUniformLocation(mProgram[2], "uSceneMap");
+	glUniform1i(loc, 1);
 	
 	// tell the shader the size of a texel
 	GLfloat texelSize[2];
@@ -422,17 +439,16 @@ SSAORenderer::~SSAORenderer ()
 void SSAORenderer::Draw () const
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, mFBO);
-	glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glUseProgram(mProgram[0]);
 	glBindVertexArray(mModelVAO);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, mTex[0]);
 	glDrawElements(GL_TRIANGLES, mNumIndices, GL_UNSIGNED_INT, 0);
 	glFlush();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, mSSAOFBO);
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, mTex[0]);
@@ -444,9 +460,12 @@ void SSAORenderer::Draw () const
 	glFlush();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, mTex[2]);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, mTex[3]);
 	glUseProgram(mProgram[2]);
 	glBindVertexArray(mQuadVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 12);

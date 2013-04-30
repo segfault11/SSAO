@@ -2,6 +2,7 @@
 #version 150
 //------------------------------------------------------------------------------
 uniform sampler2D uSSAOMap;
+uniform sampler2D uSceneMap;
 uniform vec2 uTexelSize;
 //------------------------------------------------------------------------------
 in VertexData
@@ -15,6 +16,12 @@ out vec4 oFragOut;
 void main ()
 {
 	float smoothSSAO = 0.0f;
+	vec4 sceneColor = texture(uSceneMap, gVertexData.texCoord);
+
+	if(sceneColor.a == 0.0f)
+	{
+		discard;
+	}
 
    	for (int i = 0; i < 4; i++)
 	{
@@ -28,5 +35,6 @@ void main ()
 	smoothSSAO = smoothSSAO/16.0f;
 
 	oFragOut = vec4(smoothSSAO, smoothSSAO, smoothSSAO, 1.0f);
+//	oFragOut = smoothSSAO*sceneColor; 
 }
 //------------------------------------------------------------------------------

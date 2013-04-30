@@ -32,11 +32,9 @@ private:
 	unsigned int mHeight;
 	GLuint mFBO;
 	GLuint mRBO; 		// for depth test
-	GLuint mTex[3];
-
-	GLuint mSSAOFBO;
-
-	GL::Vector3f mSamples[32];
+	GLuint mTex[4];
+	GLuint mSSAOFBO; 	// FBO for rendering the SSAO vals into a texture
+	GL::Vector3f mSamples[64];
 };
 //-----------------------------------------------------------------------------
 #endif /* end of include guard: SSAORENDERER_H */
